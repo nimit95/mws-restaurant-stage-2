@@ -11,10 +11,14 @@ var myLazyLoad = new LazyLoad({
  */
 document.addEventListener('DOMContentLoaded', (event) => {
   initMap(); // added 
+  initCache();
   fetchNeighborhoods();
   fetchCuisines();
 });
 
+initCache = () =>{
+  DBHelper.manageCaches();
+}
 /**
  * Fetch all neighborhoods and set their HTML.
  */

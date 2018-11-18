@@ -162,6 +162,51 @@ class DBHelper {
     // });
   }
 
+  static manageCaches() { 
+    setInterval(() => {
+      // delete indexDB cache regularly to get new data
+      console.log('clearing cache')
+      DBHelper.deleteRestaurantsCache();
+      DBHelper.deleteRestaurantCache();
+    }, 60 * 1000);
+  }
+
+
+  static deleteRestaurantsCache() {
+    this.openDB().then(db => {
+      if(!db) return;
+
+      let tx = db.transaction('restaurants', 'readwrite');
+      let store = tx.objectStore('restaurants');
+
+      return store.openCursor();
+    }).then(function deleteRestaurants(cursor) {
+      if(!cursor) return;
+      cursor.delete();
+
+      return cursor.continue().then(deleteRestaurants);
+    }).then(() => {
+      console.log(' Restaurants cache cleared');
+    })
+  }
+
+  static deleteRestaurantCache() {
+    this.openDB().then(db => {
+      if(!db) return;
+
+      let tx = db.transaction('restaurant', 'readwrite');
+      let store = tx.objectStore('restaurant');
+
+      return store.openCursor();
+    }).then(function deleteRestaurant(cursor) {
+      if(!cursor) return;
+      cursor.delete();
+
+      return cursor.continue().then(deleteRestaurant);
+    }).then(() => {
+      console.log(' Restaurant cache cleared');
+    })
+  }
   /**
    * Fetch restaurants by a cuisine type with proper error handling.
    */
