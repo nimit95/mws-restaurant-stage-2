@@ -168,7 +168,7 @@ class DBHelper {
       console.log('clearing cache')
       DBHelper.deleteRestaurantsCache();
       DBHelper.deleteRestaurantCache();
-    }, 60 * 1000);
+    }, 60 * 30 * 1000);
   }
 
 
