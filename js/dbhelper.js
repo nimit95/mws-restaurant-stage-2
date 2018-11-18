@@ -25,15 +25,15 @@ class DBHelper {
     if(this.dbPromise) {
       return this.dbPromise;
     } else {
-      this.dbPromise = idb.open('restaurant_review', 1, upgradeDb => {
-        let store = upgradeDb.createObjectStore('restaurants',  {
+      this.dbPromise = idb.open('restaurant_review', 2, upgradeDb => {
+        let store = upgradeDb.createObjectStore('restaurants', {
           keyPath: 'id'
         });
         let store2 = upgradeDb.createObjectStore('restaurant',  {
           keyPath: 'id'
         });
-        store.createIndex('by-id', 'id');
-        store2.createIndex('by-id', 'id');
+        store.createIndex('id', 'id');
+        store2.createIndex('id', 'id');
       })
       
       return this.dbPromise;
@@ -46,12 +46,14 @@ class DBHelper {
   static fetchRestaurants(callback) {
 
     this.openDB().then(db => {
-
+      console.log(db);
       let tx = db.transaction('restaurants');
-      return tx.objectStore('restaurants').getAll('by-id');
+      return tx.objectStore('restaurants').getAll();
     }).then(restaurants => {
+      console.log('index db got -->', restaurants);
       if(restaurants.length === 0) {
         //fetch restaurants 
+        console.log('from internet');
         let xhr = new XMLHttpRequest();
         xhr.open('GET', DBHelper.DATABASE_URL);
         xhr.onload = () => {
@@ -88,6 +90,7 @@ class DBHelper {
         
         xhr.send();
       } else {
+        console.log('from idb');
         callback(null, restaurants);
       }
     })
@@ -106,9 +109,12 @@ class DBHelper {
 
       return store.get(parseInt(id));
     }).then(restaurant => {
+        console.log('index db got -->', restaurant);
         if(restaurant) {
+          console.log('from index db')
           callback(null, restaurant);
         } else {
+          console.log('from internet')
           let xhr = new XMLHttpRequest();
           xhr.open('GET', DBHelper.DATABASE_URL + `/${id}`);
 
