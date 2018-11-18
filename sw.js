@@ -1,5 +1,4 @@
 
-importScripts('serviceworker-cache-polyfill.js');
 
 let cacheName = 'restaurant-sw-v'
 self.addEventListener('install', function(event) {
