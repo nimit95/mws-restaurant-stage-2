@@ -1,7 +1,16 @@
 /**
  * Common database helper functions.
  */
+
+
 class DBHelper {
+
+
+  
+
+  constructor() {
+    this.dbPromise = null;
+  } 
 
   /**
    * Database URL.
@@ -12,25 +21,77 @@ class DBHelper {
     return `http://localhost:${port}/restaurants`;
   }
 
+  static openDB() {
+    if(this.dbPromise) {
+      return this.dbPromise;
+    } else {
+      this.dbPromise = idb.open('restaurant_review', 1, upgradeDb => {
+        let store = upgradeDb.createObjectStore('restaurants',  {
+          keyPath: 'id'
+        });
+        let store2 = upgradeDb.createObjectStore('restaurant',  {
+          keyPath: 'id'
+        });
+        store.createIndex('by-id', 'id');
+        store2.createIndex('by-id', 'id');
+      })
+      
+      return this.dbPromise;
+    }
+    
+  }
   /**
    * Fetch all restaurants.
    */
   static fetchRestaurants(callback) {
-    let xhr = new XMLHttpRequest();
-    xhr.open('GET', DBHelper.DATABASE_URL);
-    xhr.onload = () => {
-      if (xhr.status === 200) { // Got a success response from server!
-        // console.log("**************", xhr.responseText)
-        const json = JSON.parse(xhr.responseText);
-        console.log(json);
-        // const restaurants = json.restaurants;
-        callback(null, json);
-      } else { // Oops!. Got an error from server.
-        const error = (`Request failed. Returned status of ${xhr.status}`);
-        callback(error, null);
+
+    this.openDB().then(db => {
+
+      let tx = db.transaction('restaurants');
+      return tx.objectStore('restaurants').getAll('by-id');
+    }).then(restaurants => {
+      if(restaurants.length === 0) {
+        //fetch restaurants 
+        let xhr = new XMLHttpRequest();
+        xhr.open('GET', DBHelper.DATABASE_URL);
+        xhr.onload = () => {
+          if (xhr.status === 200) { // Got a success response from server!
+            // console.log("**************", xhr.responseText)
+            const json = JSON.parse(xhr.responseText);
+            console.log(json);
+            // const restaurants = json.restaurants;
+            callback(null, json);
+            //store for future as well
+            this.openDB().then(db => {
+              if(!db) return;
+              let tx = db.transaction('restaurants', 'readwrite');
+              let store = tx.objectStore('restaurants');
+              json.forEach(restaurant=> {
+                store.put(restaurant);
+              })
+              return tx.complete;
+            }).then(function() { // successfully added restaurants to IndexDB
+              
+              console.log("Restaurants added to Index DB successfully")
+
+            }).catch(function(error) { // failed adding restaurants to IndexDB
+              
+              console.log(error)
+
+            })
+          
+          } else { // Oops!. Got an error from server.
+            const error = (`Request failed. Returned status of ${xhr.status}`);
+            callback(error, null);
+          }
+        };
+        
+        xhr.send();
+      } else {
+        callback(null, restaurants);
       }
-    };
-    xhr.send();
+    })
+    
   }
 
   /**
@@ -38,24 +99,47 @@ class DBHelper {
    */
   static fetchRestaurantById(id, callback) {
     // fetch all restaurants with proper error handling.
-    let xhr = new XMLHttpRequest();
-    xhr.open('GET', DBHelper.DATABASE_URL + `/${id}`);
 
-    xhr.onload = () => {
-      if(xhr.status === 200) {
-        
-        if(xhr.responseText !== "") {
-          const restaurant = JSON.parse(xhr.responseText);
+    this.openDB().then(db => {
+      let tx = db.transaction('restaurant');
+      let store = tx.objectStore('restaurant');
+
+      return store.get(parseInt(id));
+    }).then(restaurant => {
+        if(restaurant) {
           callback(null, restaurant);
         } else {
-          callback('Restaurant does not exist', null);
+          let xhr = new XMLHttpRequest();
+          xhr.open('GET', DBHelper.DATABASE_URL + `/${id}`);
+
+          xhr.onload = () => {
+            if(xhr.status === 200) {
+              
+              if(xhr.responseText !== "") {
+                const restaurant = JSON.parse(xhr.responseText);
+                callback(null, restaurant);
+
+                this.openDB().then(db => {
+                  if(!db) return 
+                  
+                  let tx = db.transaction('restaurant', 'readwrite');
+                  let store = tx.objectStore('restaurant');
+
+                  store.put(restaurant);
+                })
+
+              } else {
+                callback('Restaurant does not exist', null);
+              }
+            } else {
+              const error = (`Request failed. Returned status of ${xhr.status}`);
+              callback(error, null);
+            }
+          };
+          xhr.send();
         }
-      } else {
-        const error = (`Request failed. Returned status of ${xhr.status}`);
-        callback(error, null);
-      }
-    };
-    xhr.send();
+    });
+    
 
 
     // DBHelper.fetchRestaurantByIdXhr((error, restaurant) => {
