@@ -54,7 +54,6 @@ self.addEventListener('fetch', function(event) {
       console.log('resp  -->s', response, event.request);
       if(response) return response;
       if(event.request && event.request.url.includes("restaurant.html")) {
-        return fetch(event.request)
         console.log('caching this rest page')
         return fetch(request).then(function(site_response){
           cache.put(request, site_response.clone());
